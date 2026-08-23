@@ -2,16 +2,24 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <!-- Aquí está la ruta configurada para tu logo.png -->
-    <link rel="icon" type="image/png" href="/logo.png" />
+    
+    <!-- Icono normal para navegadores web -->
+    <link rel="icon" type="image/png" href="/logo-ios.png" />
+    
+    <!-- ETIQUETA CRÍTICA PARA iPHONE: Obliga a iOS a leer la nueva imagen -->
+    <link rel="apple-touch-icon" href="/logo-ios.png" />
+    
+    <!-- Archivo de configuración de la app (PWA) -->
+    <link rel="manifest" href="/manifest.json" />
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PaseaDog App</title>
   </head>
   <body>
-    <!-- Este div es donde Vue inserta toda tu aplicación -->
+    <!-- Contenedor donde Vue carga tu app -->
     <div id="app"></div>
     
-    <!-- Script principal de Vue (Vite) -->
+    <!-- Script principal de tu proyecto -->
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
