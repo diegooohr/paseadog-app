@@ -1,8 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { supabase } from './supabase'
-
-// IMPORTANTE: Traemos la función para cargar el historial global desde la base de datos
 import { cargarHistorial } from './store.js'
 
 import AppHeader from './components/AppHeader.vue'
@@ -44,8 +42,6 @@ onMounted(async () => {
     usuarioActual.value = session.user
     await cargarPerfilUsuario(session.user.id)
     await cargarDatosUsuario(session.user.id)
-    
-    // Cargamos el historial del usuario apenas entra
     await cargarHistorial(session.user.id)
   }
   cargandoSesion.value = false
@@ -55,8 +51,6 @@ onMounted(async () => {
       usuarioActual.value = session.user
       await cargarPerfilUsuario(session.user.id)
       await cargarDatosUsuario(session.user.id)
-      
-      // Cargamos el historial si cambia la sesión
       await cargarHistorial(session.user.id)
     } else {
       usuarioActual.value = null
@@ -158,7 +152,8 @@ const cerrarDetalles = () => {
 </script>
 
 <template>
-  <div class="flex flex-col h-screen max-w-md mx-auto bg-stone-50 font-sans text-stone-800 relative shadow-2xl">
+  <!-- min-h-screen permite que la página crezca y se pueda hacer scroll de forma natural -->
+  <div class="flex flex-col min-h-screen max-w-md mx-auto bg-stone-50 font-sans text-stone-800 relative shadow-2xl">
     
     <AuthLogin v-if="!cargandoSesion && !usuarioActual" @loginExitoso="(user) => { usuarioActual = user; cargarPerfilUsuario(user.id); cargarDatosUsuario(user.id); }" />
 
@@ -171,7 +166,7 @@ const cerrarDetalles = () => {
         @cerrarSesion="cerrarSesion"
       />
 
-      <main class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-6 pb-10">
+      <main class="flex-1 px-5 py-4 flex flex-col gap-6 pb-24">
         
         <section class="pt-1">
           <h2 class="text-3xl font-extrabold text-stone-800 tracking-tight">¡Hola {{ nombrePaseador }}! 👋</h2>
