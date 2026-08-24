@@ -2,6 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { supabase } from './supabase'
 
+// IMPORTANTE: Traemos la función para cargar el historial global desde la base de datos
+import { cargarHistorial } from './store.js'
+
 import AppHeader from './components/AppHeader.vue'
 import ListaMascotas from './components/ListaMascotas.vue'
 import DetallesMascota from './components/DetallesMascota.vue'
@@ -24,7 +27,6 @@ const mascotaSeleccionada = ref(null)
 const nombrePaseador = ref('Paseador')
 const mascotas = ref([])
 
-// Sistema global de alertas flotantes
 const alertaGlobal = ref({
   mostrar: false,
   titulo: '',
@@ -33,12 +35,7 @@ const alertaGlobal = ref({
 })
 
 const mostrarAlerta = (titulo, mensaje, tipo = 'advertencia') => {
-  alertaGlobal.value = {
-    mostrar: true,
-    titulo,
-    mensaje,
-    tipo
-  }
+  alertaGlobal.value = { mostrar: true, titulo, mensaje, tipo }
 }
 
 onMounted(async () => {
@@ -47,6 +44,9 @@ onMounted(async () => {
     usuarioActual.value = session.user
     await cargarPerfilUsuario(session.user.id)
     await cargarDatosUsuario(session.user.id)
+    
+    // Cargamos el historial del usuario apenas entra
+    await cargarHistorial(session.user.id)
   }
   cargandoSesion.value = false
 
@@ -55,6 +55,9 @@ onMounted(async () => {
       usuarioActual.value = session.user
       await cargarPerfilUsuario(session.user.id)
       await cargarDatosUsuario(session.user.id)
+      
+      // Cargamos el historial si cambia la sesión
+      await cargarHistorial(session.user.id)
     } else {
       usuarioActual.value = null
       mascotas.value = []
@@ -63,12 +66,7 @@ onMounted(async () => {
 })
 
 const cargarPerfilUsuario = async (userId) => {
-  const { data } = await supabase
-    .from('perfil')
-    .select('nombre')
-    .eq('user_id', userId)
-    .limit(1)
-
+  const { data } = await supabase.from('perfil').select('nombre').eq('user_id', userId).limit(1)
   if (data && data.length > 0 && data[0].nombre) {
     nombrePaseador.value = data[0].nombre
   } else {
@@ -77,15 +75,10 @@ const cargarPerfilUsuario = async (userId) => {
 }
 
 const cargarDatosUsuario = async (userId) => {
-  const { data, error } = await supabase
-    .from('mascotas')
-    .select('*')
-    .eq('user_id', userId)
-
+  const { data, error } = await supabase.from('mascotas').select('*').eq('user_id', userId)
   if (error) {
     console.error('Error al cargar mascotas de Supabase:', error)
   }
-
   if (data && data.length > 0) {
     mascotas.value = data
   } else {
@@ -105,22 +98,15 @@ const gestionarMascota = async ({ mascota, esEdicion, index }) => {
     mostrarAlerta('Sesión requerida', 'Debe iniciar sesión para gestionar mascotas.', 'error')
     return
   }
-
   if (esEdicion && mascota.id) {
     const { error } = await supabase
       .from('mascotas')
       .update({
-        nombre: mascota.nombre,
-        raza: mascota.raza,
-        tamano: mascota.tamano,
-        edad: mascota.edad,
-        caracteristicas: mascota.caracteristicas
+        nombre: mascota.nombre, raza: mascota.raza, tamano: mascota.tamano, edad: mascota.edad, caracteristicas: mascota.caracteristicas
       })
       .eq('id', mascota.id)
       .eq('user_id', usuarioActual.value.id)
-
     if (error) {
-      console.error('Error al editar la mascota:', error)
       mostrarAlerta('Error', 'No se pudo actualizar: ' + error.message, 'error')
     } else {
       await cargarDatosUsuario(usuarioActual.value.id)
@@ -130,17 +116,10 @@ const gestionarMascota = async ({ mascota, esEdicion, index }) => {
     const { data, error } = await supabase
       .from('mascotas')
       .insert([{
-        nombre: mascota.nombre,
-        raza: mascota.raza,
-        tamano: mascota.tamano,
-        edad: mascota.edad,
-        caracteristicas: mascota.caracteristicas,
-        user_id: usuarioActual.value.id
+        nombre: mascota.nombre, raza: mascota.raza, tamano: mascota.tamano, edad: mascota.edad, caracteristicas: mascota.caracteristicas, user_id: usuarioActual.value.id
       }])
       .select()
-
     if (error) {
-      console.error('Error al insertar la mascota en Supabase:', error)
       mostrarAlerta('Error de base de datos', error.message, 'error')
     } else if (data && data.length > 0) {
       mascotas.value.push(data[0])
@@ -152,14 +131,8 @@ const gestionarMascota = async ({ mascota, esEdicion, index }) => {
 const eliminarMascota = async (index) => {
   const mascotaAEliminar = mascotas.value[index]
   if (mascotaAEliminar && mascotaAEliminar.id) {
-    const { error } = await supabase
-      .from('mascotas')
-      .delete()
-      .eq('id', mascotaAEliminar.id)
-      .eq('user_id', usuarioActual.value.id)
-
+    const { error } = await supabase.from('mascotas').delete().eq('id', mascotaAEliminar.id).eq('user_id', usuarioActual.value.id)
     if (error) {
-      console.error('Error al eliminar mascota:', error)
       mostrarAlerta('Error', 'No se pudo eliminar la mascota.', 'error')
       return
     }
@@ -198,14 +171,13 @@ const cerrarDetalles = () => {
         @cerrarSesion="cerrarSesion"
       />
 
-      <main class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-6">
+      <main class="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-6 pb-10">
         
         <section class="pt-1">
           <h2 class="text-3xl font-extrabold text-stone-800 tracking-tight">¡Hola {{ nombrePaseador }}! 👋</h2>
           <p class="text-stone-500 font-medium mt-1 text-base">Empecemos con el paseo.</p>
         </section>
 
-        <!-- Conectado el evento @mostrarAviso de la lista de mascotas -->
         <ListaMascotas 
           :mascotas="mascotas" 
           @guardarMascota="gestionarMascota" 
@@ -214,7 +186,6 @@ const cerrarDetalles = () => {
           @mostrarAviso="(aviso) => mostrarAlerta(aviso.titulo, aviso.mensaje, aviso.tipo)" 
         />
 
-        <!-- Conectado el evento @mostrarAviso del control de paseos -->
         <ControlPaseo 
           :mascotas="mascotas" 
           :userId="usuarioActual.id" 
@@ -229,7 +200,6 @@ const cerrarDetalles = () => {
         @cerrar="cerrarDetalles" 
       />
       
-      <!-- Conectado el evento @mostrarAviso del perfil -->
       <PerfilPaseador 
         v-if="modalPerfilAbierto" 
         @cerrar="actualizarPerfil" 
@@ -249,7 +219,6 @@ const cerrarDetalles = () => {
 
     </template>
 
-    <!-- Componente Global de Alertas Personalizadas -->
     <AlertaNotificacion 
       :mostrar="alertaGlobal.mostrar"
       :titulo="alertaGlobal.titulo"
