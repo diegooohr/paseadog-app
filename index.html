@@ -2,24 +2,15 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     
-    <!-- Icono normal para navegadores web -->
-    <link rel="icon" type="image/png" href="/logo-ios.png" />
+    <!-- CONFIGURACIÓN CLAVE PARA EVITAR ZOOM Y LÍMITES EN MÓVILES -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
-    <!-- ETIQUETA CRÍTICA PARA iPHONE: Obliga a iOS a leer la nueva imagen -->
-    <link rel="apple-touch-icon" href="/logo-ios.png" />
-    
-    <!-- Archivo de configuración de la app (PWA) -->
-    <link rel="manifest" href="/manifest.json" />
-    
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PaseaDog App</title>
   </head>
-  <body>
-    <!-- Contenedor donde Vue carga tu app -->
+  <body class="bg-stone-200 m-0 p-0 overflow-x-hidden">
     <div id="app"></div>
-    
-    <!-- Script principal de tu proyecto -->
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
