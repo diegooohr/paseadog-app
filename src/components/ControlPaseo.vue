@@ -71,7 +71,6 @@
             <p class="font-bold text-stone-700">{{ resumenData.mascotas.join(', ') }}</p>
           </div>
           <div>
-            <!-- AQUÍ APLICAMOS LA FUNCIÓN DE FORMATO AL TIEMPO -->
             <span class="text-[10px] text-stone-400 uppercase font-bold tracking-wider">Tiempo Total</span>
             <p class="font-bold text-stone-700">⏱️ {{ formatoTiempo(resumenData.horas) }}</p>
           </div>
@@ -91,7 +90,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { registrarPaseo } from '../store.js' 
 
 const props = defineProps({ 
@@ -110,7 +109,31 @@ const textoBitacora = ref('')
 const mostrarResumen = ref(false)
 const resumenData = ref({ mascotas: [], horas: 0, bitacora: '' })
 
-// --- NUEVA FUNCIÓN PARA CONVERTIR DECIMALES A HH:MM:SS EN EL MODAL ---
+// Al cargar la app, revisamos si había un paseo activo guardado en el celular
+onMounted(() => {
+  const inicioGuardado = localStorage.getItem('paseadog_inicio')
+  const bitacoraGuardada = localStorage.getItem('paseadog_bitacora')
+  const mascotasGuardadas = localStorage.getItem('paseadog_mascotas')
+
+  if (inicioGuardado) {
+    const ahora = Date.now()
+    const segundosTranscurridos = Math.floor((ahora - parseInt(inicioGuardado)) / 1000)
+    
+    if (segundosTranscurridos > 0) {
+      segundos.value = segundosTranscurridos
+      enPaseo.value = true
+      if (bitacoraGuardada) textoBitacora.value = bitacoraGuardada
+      if (mascotasGuardadas) mascotasSeleccionadas.value = JSON.parse(mascotasGuardadas)
+      
+      iniciarIntervalo()
+    }
+  }
+})
+
+onUnmounted(() => {
+  if (intervalo) clearInterval(intervalo)
+})
+
 const formatoTiempo = (horasDecimal) => {
   if (!horasDecimal) return '00:00:00'
   const totalSegundos = Math.round(horasDecimal * 3600)
@@ -120,12 +143,6 @@ const formatoTiempo = (horasDecimal) => {
   return `${h}:${m}:${s}`
 }
 
-watch(() => props.mascotas, (nuevasMascotas) => {
-  if (nuevasMascotas && nuevasMascotas.length > 0 && mascotasSeleccionadas.value.length === 0) {
-    mascotasSeleccionadas.value = [nuevasMascotas[0].nombre]
-  }
-}, { immediate: true })
-
 const tiempoFormateado = computed(() => {
   const h = Math.floor(segundos.value / 3600).toString().padStart(2, '0')
   const m = Math.floor((segundos.value % 3600) / 60).toString().padStart(2, '0')
@@ -133,19 +150,30 @@ const tiempoFormateado = computed(() => {
   return `${h}:${m}:${s}`
 })
 
+const iniciarIntervalo = () => {
+  if (intervalo) clearInterval(intervalo)
+  intervalo = setInterval(() => { 
+    segundos.value++ 
+  }, 1000)
+}
+
 const togglePaseo = () => {
   if (enPaseo.value) {
+    // Finalizar paseo
     clearInterval(intervalo)
     enPaseo.value = false
     
-    // Calcula el tiempo real en formato decimal para la base de datos
+    // Limpiamos la memoria local
+    localStorage.removeItem('paseadog_inicio')
+    localStorage.removeItem('paseadog_bitacora')
+    localStorage.removeItem('paseadog_mascotas')
+
     let horasCalculadas = segundos.value / 3600
 
     mascotasSeleccionadas.value.forEach(perro => {
       registrarPaseo(perro, horasCalculadas, textoBitacora.value, props.userId)
     })
     
-    // Prepara los datos para el modal de resumen
     resumenData.value = {
       mascotas: [...mascotasSeleccionadas.value],
       horas: horasCalculadas,
@@ -154,8 +182,16 @@ const togglePaseo = () => {
     mostrarResumen.value = true
     
   } else {
+    // Iniciar paseo
     enPaseo.value = true
-    intervalo = setInterval(() => { segundos.value++ }, 1000)
+    segundos.value = 0
+    
+    // Guardamos la marca de tiempo exacta en el almacenamiento local del celular
+    localStorage.setItem('paseadog_inicio', Date.now().toString())
+    localStorage.setItem('paseadog_bitacora', textoBitacora.value)
+    localStorage.setItem('paseadog_mascotas', JSON.stringify(mascotasSeleccionadas.value))
+
+    iniciarIntervalo()
   }
 }
 
